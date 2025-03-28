@@ -1,0 +1,67 @@
+import React, { useState } from 'react';
+import { Box, TextField, Button, Paper, Typography } from '@mui/material';
+import SendIcon from '@mui/icons-material/Send';
+import { analyzeQuery } from '../services/api';
+
+function QueryInput({ onQueryResult }) {
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await analyzeQuery(query);
+      onQueryResult(result);
+    } catch (err) {
+      setError(err.message || 'Произошла ошибка при обработке запроса');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Задайте вопрос о ваших данных
+      </Typography>
+      <form onSubmit={handleSubmit}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            label="Например: 'Покажи график продаж за последние 3 месяца по регионам'"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            multiline
+            rows={2}
+            disabled={loading}
+            sx={{ mr: 2 }}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            startIcon={<SendIcon />}
+            disabled={loading || !query.trim()}
+            sx={{ height: '56px' }}
+          >
+            {loading ? 'Обработка...' : 'Отправить'}
+          </Button>
+        </Box>
+      </form>
+      {error && (
+        <Typography color="error" sx={{ mt: 2 }}>
+          {error}
+        </Typography>
+      )}
+    </Paper>
+  );
+}
+
+export default QueryInput;
