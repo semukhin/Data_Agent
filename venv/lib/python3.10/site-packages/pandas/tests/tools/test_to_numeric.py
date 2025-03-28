@@ -4,15 +4,12 @@ import numpy as np
 from numpy import iinfo
 import pytest
 
-import pandas.util._test_decorators as td
-
 import pandas as pd
 from pandas import (
     ArrowDtype,
     DataFrame,
     Index,
     Series,
-    option_context,
     to_numeric,
 )
 import pandas._testing as tm
@@ -70,14 +67,10 @@ def test_empty(input_kwargs, result_kwargs):
     tm.assert_series_equal(result, expected)
 
 
-@pytest.mark.parametrize(
-    "infer_string", [False, pytest.param(True, marks=td.skip_if_no("pyarrow"))]
-)
 @pytest.mark.parametrize("last_val", ["7", 7])
-def test_series(last_val, infer_string):
-    with option_context("future.infer_string", infer_string):
-        ser = Series(["1", "-3.14", last_val])
-        result = to_numeric(ser)
+def test_series(last_val):
+    ser = Series(["1", "-3.14", last_val])
+    result = to_numeric(ser)
 
     expected = Series([1, -3.14, 7])
     tm.assert_series_equal(result, expected)
@@ -119,7 +112,6 @@ def test_error(data, msg):
 @pytest.mark.parametrize(
     "errors,exp_data", [("ignore", [1, -3.14, "apple"]), ("coerce", [1, -3.14, np.nan])]
 )
-@pytest.mark.filterwarnings("ignore:errors='ignore' is deprecated:FutureWarning")
 def test_ignore_error(errors, exp_data):
     ser = Series([1, -3.14, "apple"])
     result = to_numeric(ser, errors=errors)
@@ -137,7 +129,6 @@ def test_ignore_error(errors, exp_data):
         ("coerce", [1.0, 0.0, np.nan]),
     ],
 )
-@pytest.mark.filterwarnings("ignore:errors='ignore' is deprecated:FutureWarning")
 def test_bool_handling(errors, exp):
     ser = Series([True, False, "apple"])
 
@@ -238,7 +229,6 @@ def test_all_nan():
     tm.assert_series_equal(result, expected)
 
 
-@pytest.mark.filterwarnings("ignore:errors='ignore' is deprecated:FutureWarning")
 def test_type_check(errors):
     # see gh-11776
     df = DataFrame({"a": [1, -3.14, 7], "b": ["4", "5", "6"]})
@@ -253,7 +243,6 @@ def test_scalar(val, signed, transform):
     assert to_numeric(transform(val)) == float(val)
 
 
-@pytest.mark.filterwarnings("ignore:errors='ignore' is deprecated:FutureWarning")
 def test_really_large_scalar(large_val, signed, transform, errors):
     # see gh-24910
     kwargs = {"errors": errors} if errors is not None else {}
@@ -271,7 +260,6 @@ def test_really_large_scalar(large_val, signed, transform, errors):
         tm.assert_almost_equal(to_numeric(val, **kwargs), expected)
 
 
-@pytest.mark.filterwarnings("ignore:errors='ignore' is deprecated:FutureWarning")
 def test_really_large_in_arr(large_val, signed, transform, multiple_elts, errors):
     # see gh-24910
     kwargs = {"errors": errors} if errors is not None else {}
@@ -311,7 +299,6 @@ def test_really_large_in_arr(large_val, signed, transform, multiple_elts, errors
         tm.assert_almost_equal(result, np.array(expected, dtype=exp_dtype))
 
 
-@pytest.mark.filterwarnings("ignore:errors='ignore' is deprecated:FutureWarning")
 def test_really_large_in_arr_consistent(large_val, signed, multiple_elts, errors):
     # see gh-24910
     #
@@ -350,7 +337,6 @@ def test_really_large_in_arr_consistent(large_val, signed, multiple_elts, errors
         ("coerce", lambda x: np.isnan(x)),
     ],
 )
-@pytest.mark.filterwarnings("ignore:errors='ignore' is deprecated:FutureWarning")
 def test_scalar_fail(errors, checker):
     scalar = "fail"
 
@@ -410,7 +396,7 @@ def test_period(request, transform_assert_equal):
     inp = transform(idx)
 
     if not isinstance(inp, Index):
-        request.applymarker(
+        request.node.add_marker(
             pytest.mark.xfail(reason="Missing PeriodDtype support in to_numeric")
         )
     result = to_numeric(inp)
@@ -426,7 +412,6 @@ def test_period(request, transform_assert_equal):
         ("coerce", Series([np.nan, 1.0, np.nan])),
     ],
 )
-@pytest.mark.filterwarnings("ignore:errors='ignore' is deprecated:FutureWarning")
 def test_non_hashable(errors, expected):
     # see gh-13324
     ser = Series([[10.0, 2], 1.0, "apple"])
@@ -511,9 +496,7 @@ def test_ignore_downcast_invalid_data():
     data = ["foo", 2, 3]
     expected = np.array(data, dtype=object)
 
-    msg = "errors='ignore' is deprecated"
-    with tm.assert_produces_warning(FutureWarning, match=msg):
-        res = to_numeric(data, errors="ignore", downcast="unsigned")
+    res = to_numeric(data, errors="ignore", downcast="unsigned")
     tm.assert_numpy_array_equal(res, expected)
 
 
@@ -646,7 +629,6 @@ def test_coerce_uint64_conflict(data, exp_data):
         ("raise", "Unable to parse string"),
     ],
 )
-@pytest.mark.filterwarnings("ignore:errors='ignore' is deprecated:FutureWarning")
 def test_non_coerce_uint64_conflict(errors, exp):
     # see gh-17007 and gh-17125
     #
@@ -773,9 +755,7 @@ def test_to_numeric_from_nullable_string_ignore(nullable_string_dtype):
     values = ["a", "1"]
     ser = Series(values, dtype=nullable_string_dtype)
     expected = ser.copy()
-    msg = "errors='ignore' is deprecated"
-    with tm.assert_produces_warning(FutureWarning, match=msg):
-        result = to_numeric(ser, errors="ignore")
+    result = to_numeric(ser, errors="ignore")
     tm.assert_series_equal(result, expected)
 
 
@@ -945,9 +925,7 @@ def test_to_numeric_dtype_backend_error(dtype_backend):
     with pytest.raises(ValueError, match="Unable to parse string"):
         to_numeric(ser, dtype_backend=dtype_backend)
 
-    msg = "errors='ignore' is deprecated"
-    with tm.assert_produces_warning(FutureWarning, match=msg):
-        result = to_numeric(ser, dtype_backend=dtype_backend, errors="ignore")
+    result = to_numeric(ser, dtype_backend=dtype_backend, errors="ignore")
     tm.assert_series_equal(result, expected)
 
     result = to_numeric(ser, dtype_backend=dtype_backend, errors="coerce")

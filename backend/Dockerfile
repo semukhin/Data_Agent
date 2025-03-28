@@ -22,7 +22,7 @@ RUN chown -R app:app /app
 USER app
 
 # Определение переменной окружения для порта
-ENV PORT=8000
+ENV PORT=9000
 
 # Запуск приложения
 CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
