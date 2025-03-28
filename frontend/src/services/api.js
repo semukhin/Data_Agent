@@ -4,7 +4,7 @@ import { AuthService } from './auth';
 
 // Создание экземпляра axios с базовым URL
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: 'http://localhost:9000/api',
   headers: {
     'Content-Type': 'application/json',
   },
