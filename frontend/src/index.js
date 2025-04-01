@@ -55,3 +55,22 @@ root.render(
     </ThemeProvider>
   </React.StrictMode>
 );
+
+
+window.onerror = function(message, source, lineno, colno, error) {
+  console.error("Global error:", message, "at", source, ":", lineno, ":", colno);
+  console.error("Error details:", error);
+  
+  // Показать сообщение пользователю
+  if (document.getElementById('root')) {
+    document.getElementById('root').innerHTML = `
+      <div style="padding: 20px; color: red; text-align: center;">
+        <h2>Произошла ошибка при загрузке приложения</h2>
+        <p>${message}</p>
+        <p>Пожалуйста, обновите страницу или обратитесь к администратору.</p>
+      </div>
+    `;
+  }
+  
+  return true; // Предотвращает стандартное поведение ошибки
+};

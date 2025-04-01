@@ -8,23 +8,21 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Добавляем таймаут
-  timeout: 30000,
 });
 
 // Перехватчик для добавления токена авторизации
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = AuthService.getToken();
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+// apiClient.interceptors.request.use(
+//   (config) => {
+//     const token = AuthService.getToken();
+//     if (token) {
+//       config.headers['Authorization'] = `Bearer ${token}`;
+//     }
+//     return config;
+//   },
+//   (error) => {
+//     return Promise.reject(error);
+//   }
+// );
 
 // Перехватчик для обработки ответов
 apiClient.interceptors.response.use(
@@ -97,7 +95,7 @@ const apiCache = {
  * @returns {Promise} Промис с результатом запроса
  */
 export const analyzeQuery = async (query, options = {}) => {
-  const response = await fetch('/api/analyze', {
+  const response = await fetch('http://localhost:9000/api/analyze', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -20,7 +20,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,7 +45,7 @@ app.include_router(
     api.router,
     prefix=os.getenv("API_PREFIX", "/api"),
     tags=["api"],
-    dependencies=[Depends(get_current_active_user)]
+    # dependencies=[Depends(get_current_active_user)]
 )
 
 # Публичный эндпоинт для проверки здоровья приложения

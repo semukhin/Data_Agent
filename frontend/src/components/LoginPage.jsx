@@ -4,6 +4,7 @@ import { AuthService } from '../services/auth';
 
 const LoginPage = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
+  console.log("LoginPage is rendering");
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

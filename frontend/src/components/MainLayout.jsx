@@ -24,6 +24,7 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
 );
 
 function MainLayout({ onLogout }) {
+  console.log("MainLayout is rendering");
   const [queryResult, setQueryResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

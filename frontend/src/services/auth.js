@@ -7,7 +7,7 @@ const USER_KEY = 'data_agent_user';
 
 // Создание экземпляра axios с базовым URL
 const authClient = axios.create({
-  baseURL: 'http://localhost:9000',
+  baseURL: 'http://localhost:9000/api',
   headers: {
     'Content-Type': 'application/json',
   },

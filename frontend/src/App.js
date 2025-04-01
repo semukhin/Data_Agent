@@ -55,11 +55,14 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <MainLayout onLogout={() => console.log('Logout clicked')} />
+      {/* Закомментировать условную логику для отладки 
       {isAuthenticated ? (
         <MainLayout onLogout={handleLogout} />
       ) : (
         <LoginPage onLoginSuccess={handleLoginSuccess} />
       )}
+      */}
     </QueryClientProvider>
   );
 }

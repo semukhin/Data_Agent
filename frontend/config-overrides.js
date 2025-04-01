@@ -17,6 +17,7 @@ module.exports = function override(config, env) {
     })
   );
 
+  // Отключение source-map-loader для node_modules
   config.module.rules.forEach(rule => {
     if (rule.use && Array.isArray(rule.use)) {
       rule.use.forEach(use => {
