@@ -130,28 +130,40 @@ def create_optimized_visualization(data, viz_type, query_type, object_type, titl
     
     # Выбор шаблона в зависимости от типа визуализации
     if viz_type == "line":
-        template = VISUALIZATION_TEMPLATES["line_time_series"]
-        
-        # Определяем колонки для осей
+        # Если есть несколько числовых столбцов
+        numeric_cols = [col for col in data.columns if data[col].dtype.kind in 'if']
         time_cols = [col for col in data.columns if any(term in col.lower() for term in ['date', 'time', 'period', 'month', 'week'])]
-        numeric_cols = [col for col in data.columns if data[col].dtype.kind in 'if' and col not in time_cols]
         
-        x_col = time_cols[0] if time_cols else data.columns[0]
-        y_col = numeric_cols[0] if numeric_cols else (data.columns[1] if len(data.columns) > 1 else data.columns[0])
-        
-        # Форматируем заголовки
-        x_title = x_col.replace('_', ' ').title() if not title else "Период времени"
-        y_title = y_col.replace('_', ' ').title() if not title else "Значение"
-        
-        # Создаем фигуру
-        fig = px.line(
-            data, 
-            x=x_col, 
-            y=y_col,
-            markers=True,
-            line_shape='linear',
-            color_discrete_sequence=['#1976d2']
-        )
+        if len(numeric_cols) > 1 and time_cols:
+            x_col = time_cols[0]
+            
+            # Создаем мультитрековый график
+            fig = go.Figure()
+            for y_col in numeric_cols[1:]:
+                fig.add_trace(go.Scatter(
+                    x=data[x_col], 
+                    y=data[y_col], 
+                    mode='lines+markers', 
+                    name=y_col
+                ))
+            
+            # Настройка макета
+            fig.update_layout(
+                title=title or "Динамика показателей",
+                xaxis_title=x_col.replace('_', ' ').title(),
+                yaxis_title="Значения",
+                legend_title="Показатели"
+            )
+        else:
+            # Прежняя логика для одного трека
+            fig = px.line(
+                data, 
+                x=x_col, 
+                y=y_col,
+                markers=True,
+                line_shape='linear',
+                color_discrete_sequence=['#1976d2']
+            )
         
         # Применяем шаблон с форматированием
         layout = template["layout"].copy()

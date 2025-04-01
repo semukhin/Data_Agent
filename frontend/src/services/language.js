@@ -36,7 +36,14 @@ export const TRANSLATIONS = {
       next: 'Далее',
       language: 'Язык',
       russian: 'Русский',
-      english: 'Английский'
+      english: 'Английский',
+      history: 'История запросов',
+      queryHistory: 'История запросов',
+      noHistory: 'История запросов пуста',
+      clearHistory: 'Очистить историю',
+      confirmation: 'Подтверждение',
+      clearHistoryConfirm: 'Вы уверены, что хотите очистить всю историю запросов?',
+      confirm: 'Подтвердить'
     },
     auth: {
       login: 'Вход',
@@ -57,7 +64,14 @@ export const TRANSLATIONS = {
       data: 'Данные',
       sqlQuery: 'SQL-запрос',
       explanation: 'Объяснение',
-      noVisualization: 'Нет данных для отображения. Пожалуйста, введите запрос.'
+      noVisualization: 'Нет данных для отображения. Пожалуйста, введите запрос.',
+      showDataLabels: 'Показывать значения',
+      saveQuery: 'Сохранить запрос',
+      savedQueries: 'Сохраненные запросы',
+      querySaved: 'Запрос сохранен',
+      queryDeleted: 'Запрос удален',
+      enterQueryName: 'Введите название для запроса',
+      save: 'Сохранить'
     }
   },
   [LANGUAGES.EN]: {
@@ -80,7 +94,14 @@ export const TRANSLATIONS = {
       next: 'Next',
       language: 'Language',
       russian: 'Russian',
-      english: 'English'
+      english: 'English',
+      history: 'Query History',
+      queryHistory: 'Query History',
+      noHistory: 'Query history is empty',
+      clearHistory: 'Clear History',
+      confirmation: 'Confirmation',
+      clearHistoryConfirm: 'Are you sure you want to clear all query history?',
+      confirm: 'Confirm'
     },
     auth: {
       login: 'Login',
@@ -101,7 +122,14 @@ export const TRANSLATIONS = {
       data: 'Data',
       sqlQuery: 'SQL Query',
       explanation: 'Explanation',
-      noVisualization: 'No data to display. Please enter a query.'
+      noVisualization: 'No data to display. Please enter a query.',
+      showDataLabels: 'Show values',
+      saveQuery: 'Save Query',
+      savedQueries: 'Saved Queries',
+      querySaved: 'Query saved',
+      queryDeleted: 'Query deleted',
+      enterQueryName: 'Enter a name for the query',
+      save: 'Save'
     }
   }
 };

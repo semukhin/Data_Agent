@@ -13,6 +13,8 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5 minutes
       cacheTime: 30 * 60 * 1000, // 30 minutes
+      retry: 1, // Ограничиваем количество повторных попыток
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000) // Экспоненциальная задержка
     },
   },
 });
@@ -23,9 +25,15 @@ function App() {
 
   useEffect(() => {
     const checkAuth = () => {
-      const authenticated = AuthService.isAuthenticated();
-      setIsAuthenticated(authenticated);
-      setLoading(false);
+      try {
+        const authenticated = AuthService.isAuthenticated();
+        setIsAuthenticated(authenticated);
+      } catch (error) {
+        console.error('Ошибка при проверке аутентификации:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
     };
     
     checkAuth();
@@ -36,8 +44,12 @@ function App() {
   };
 
   const handleLogout = () => {
-    AuthService.logout();
-    setIsAuthenticated(false);
+    try {
+      AuthService.logout();
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Ошибка при выходе:', error);
+    }
   };
 
   if (loading) {
@@ -55,14 +67,11 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <MainLayout onLogout={() => console.log('Logout clicked')} />
-      {/* Закомментировать условную логику для отладки 
-      {isAuthenticated ? (
-        <MainLayout onLogout={handleLogout} />
-      ) : (
-        <LoginPage onLoginSuccess={handleLoginSuccess} />
-      )}
-      */}
+      <MainLayout 
+        onLogout={handleLogout} 
+        // Раскомментируйте следующую строку для полной аутентификации
+        // isAuthenticated={isAuthenticated}
+      />
     </QueryClientProvider>
   );
 }
