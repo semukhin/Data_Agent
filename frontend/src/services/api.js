@@ -30,6 +30,12 @@ apiClient.interceptors.response.use(
   (error) => {
     // Обработка ошибки авторизации
     if (error.response && error.response.status === 401) {
+      // Сохраняем текущий URL для возврата после авторизации
+      const currentUrl = window.location.pathname;
+      if (currentUrl !== '/login') {
+        sessionStorage.setItem('redirectAfterLogin', currentUrl);
+      }
+      
       AuthService.logout();
       window.location.href = '/login';
     }
@@ -60,6 +66,7 @@ export const analyzeQuery = async (query, options = {}) => {
     
     return response.data;
   } catch (error) {
+    console.error('Ошибка анализа:', error);
     if (error.response) {
       throw new Error(error.response.data.detail || 'Ошибка сервера');
     } else if (error.request) {

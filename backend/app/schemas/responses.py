@@ -1,5 +1,8 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+from .pagination import PaginationParams
 
 class AnalysisResponse(BaseModel):
     """Схема ответа для результатов анализа запроса"""
@@ -7,10 +10,12 @@ class AnalysisResponse(BaseModel):
     visualization_type: str = Field(..., description="Рекомендуемый тип визуализации")
     sql_hints: str = Field(..., description="Подсказки для SQL-запроса")
 
+
 class SQLResponse(BaseModel):
     """Схема ответа для результатов генерации SQL"""
     sql_query: str = Field(..., description="Сгенерированный SQL-запрос")
     query_explanation: str = Field(..., description="Объяснение запроса")
+
 
 class VisualizationResponse(BaseModel):
     """Схема ответа для результатов визуализации"""
@@ -18,6 +23,8 @@ class VisualizationResponse(BaseModel):
     figure_json: Dict[str, Any] = Field(..., description="JSON-представление визуализации")
     title: str = Field(..., description="Заголовок визуализации")
     description: str = Field(..., description="Описание визуализации")
+
+
 
 class QueryResponse(BaseModel):
     """Схема ответа для результатов обработки запроса"""
@@ -28,6 +35,7 @@ class QueryResponse(BaseModel):
     explanation: str = Field(..., description="Объяснение результатов")
     title: str = Field(..., description="Заголовок результатов")
     description: str = Field(..., description="Описание результатов")
+    pagination: Optional[Dict[str, Any]] = Field(None, description="Информация о пагинации")
     
     class Config:
         schema_extra = {
@@ -38,7 +46,13 @@ class QueryResponse(BaseModel):
                 "sql_query": "SELECT date_trunc('week', event_time) as week, COUNT(DISTINCT user_id) as active_users FROM events_view_3_2 GROUP BY week ORDER BY week",
                 "explanation": "Запрос выбирает количество уникальных пользователей по неделям из таблицы событий",
                 "title": "Динамика активных пользователей по неделям",
-                "description": "График показывает изменение количества активных пользователей по неделям за выбранный период"
+                "description": "График показывает изменение количества активных пользователей по неделям за выбранный период",
+                "pagination": {
+                    "total": 10,
+                    "page": 1,
+                    "page_size": 100,
+                    "total_pages": 1
+                }
             }
         }
 

@@ -36,3 +36,32 @@ body {
   ::-webkit-scrollbar-thumb:hover {
     background: #888888;
   }
+ 
+  /* Удаление атрибуции Plotly через CSS */
+  .js-plotly-plot .plotly-notifier {
+    display: none !important;
+  }
+
+  .js-plotly-plot .modebar-container {
+    opacity: 0.7 !important;
+  }
+
+  /* Скрытие ссылок на Plotly */
+  .js-plotly-plot .modebar a[data-title*="Produced with Plotly"] {
+    display: none !important;
+  }
+
+  /* Скрытие ссылок на Plotly.js в подсказках */
+  .plotly-notifier-note a[href*="plotly.com"] {
+    display: none !important;
+  }
+
+  /* Скрытие атрибуции на нижней панели */
+  .modebar-btn[data-title*="Produced with"] {
+    display: none !important;
+  }
+
+  /* Дополнительное правило для ссылок на Plotly */
+  a[href*="https://plotly.com/"] {
+    display: none !important;
+  }

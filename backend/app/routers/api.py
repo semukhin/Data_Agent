@@ -30,6 +30,9 @@ async def analyze_query(
         Результаты обработки запроса
     """
     try:
+        # Обеспечим наличие объекта пагинации, если он не передан
+        pagination_params = request.pagination if request.pagination else PaginationParams(page=1, page_size=100)
+        
         # Обработка запроса пользователя
         result = process_query(
             query=request.query,
@@ -37,20 +40,28 @@ async def analyze_query(
             sql_agent=sql_agent,
             viz_agent=viz_agent,
             db=db,
-            pagination=request.pagination
+            pagination=pagination_params
         )
         
-        return {
+        # Формирование ответа
+        response = {
             "success": True,
-            "data": result["data"],
-            "visualization": result["visualization"],
-            "sql_query": result["sql_query"],
-            "explanation": result["explanation"],
+            "data": result.get("data", []),
+            "visualization": result.get("visualization", {}),
+            "sql_query": result.get("sql_query", ""),
+            "explanation": result.get("explanation", ""),
             "title": result.get("title", "Результаты анализа"),
-            "description": result.get("description", ""),
-            "pagination": result.get("pagination", {})
+            "description": result.get("description", "")
         }
+        
+        # Добавление информации о пагинации, если она есть в результате
+        if "pagination" in result:
+            response["pagination"] = result["pagination"]
+        
+        return response
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # Вывод полного стека ошибки для отладки
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/metadata", response_model=MetadataResponse)

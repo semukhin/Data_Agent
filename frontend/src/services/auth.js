@@ -7,7 +7,7 @@ const USER_KEY = 'data_agent_user';
 
 // Создание экземпляра axios с базовым URL
 const authClient = axios.create({
-  baseURL: 'http://localhost:9000/api',
+  baseURL: 'http://localhost:9000',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -25,23 +25,40 @@ export const AuthService = {
    * @returns {Promise} Промис с результатом запроса
    */
   login: async (username, password) => {
-    // В реальном приложении здесь был бы запрос к бэкенду
-    // Для простой авторизации просто проверяем учетные данные
-    if (username === 'atlantix' && password === 'atlantix') {
-      // Создание имитации JWT токена (в реальном приложении это был бы настоящий JWT)
-      const mockToken = btoa(JSON.stringify({
-        username,
-        role: 'admin',
-        exp: new Date().getTime() + 86400000 // 24 часа
-      }));
+    try {
+      // Формируем тело запроса в формате x-www-form-urlencoded (требуется для OAuth2)
+      const formData = new URLSearchParams();
+      formData.append('username', username);
+      formData.append('password', password);
       
-      // Сохранение данных пользователя и токена в локальном хранилище
-      localStorage.setItem(TOKEN_KEY, mockToken);
-      localStorage.setItem(USER_KEY, JSON.stringify({ username, role: 'admin' }));
+      // Отправляем запрос к API для получения токена
+      const response = await authClient.post('/api/token', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
       
-      return { success: true, user: { username, role: 'admin' } };
-    } else {
-      throw new Error('Неверное имя пользователя или пароль');
+      if (response.data && response.data.access_token) {
+        // Сохраняем токен в локальном хранилище
+        localStorage.setItem(TOKEN_KEY, response.data.access_token);
+        
+        // Получаем информацию о пользователе
+        const userResponse = await authClient.get('/api/me', {
+          headers: {
+            'Authorization': `Bearer ${response.data.access_token}`
+          }
+        });
+        
+        // Сохраняем данные пользователя
+        localStorage.setItem(USER_KEY, JSON.stringify(userResponse.data));
+        
+        return { success: true, user: userResponse.data };
+      } else {
+        throw new Error('Токен не получен');
+      }
+    } catch (error) {
+      console.error('Ошибка авторизации:', error);
+      throw new Error(error.response?.data?.detail || 'Неверное имя пользователя или пароль');
     }
   },
   
@@ -59,26 +76,7 @@ export const AuthService = {
    * @returns {boolean} Флаг авторизации
    */
   isAuthenticated: () => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    
-    if (!token) return false;
-    
-    try {
-      // Декодирование токена для проверки срока действия
-      const decodedToken = JSON.parse(atob(token));
-      const currentTime = new Date().getTime();
-      
-      if (decodedToken.exp < currentTime) {
-        // Токен истек
-        AuthService.logout();
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      AuthService.logout();
-      return false;
-    }
+    return !!localStorage.getItem(TOKEN_KEY);
   },
   
   /**
@@ -105,7 +103,6 @@ export const AuthService = {
    * @returns {string|null} Токен авторизации или null
    */
   getToken: () => {
-    if (!AuthService.isAuthenticated()) return null;
     return localStorage.getItem(TOKEN_KEY);
   }
 };

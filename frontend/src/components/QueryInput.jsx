@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, TextField, Button, Paper, Typography, FormControl, InputLabel, Select, MenuItem, Divider } from '@mui/material';
+import { Box, TextField, Button, Paper, Typography, FormControl, InputLabel, Select, MenuItem, Divider, Alert } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import HistoryIcon from '@mui/icons-material/History';
 import { analyzeQuery } from '../services/api';
@@ -40,6 +40,7 @@ function QueryInput({ onQueryResult, onQueryStart, onQueryError }) {
         onQueryResult(result);
       }
     } catch (err) {
+      console.error('Ошибка при выполнении запроса:', err);
       const errorMessage = err.message || t('dashboard', 'queryError');
       setError(errorMessage);
       
@@ -155,9 +156,9 @@ function QueryInput({ onQueryResult, onQueryStart, onQueryError }) {
       </form>
       
       {error && (
-        <Typography color="error" sx={{ mt: 2 }}>
+        <Alert severity="error" sx={{ mt: 2 }}>
           {error}
-        </Typography>
+        </Alert>
       )}
     </Paper>
   );
