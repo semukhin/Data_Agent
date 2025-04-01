@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import re
 from typing import Dict, Any
@@ -80,6 +81,21 @@ class SQLExpertAgent:
             tables_info.append("")  # Пустая строка для разделения таблиц
         
         return "\n".join(tables_info)
+    
+
+    async def generate_sql_async(self, analysis_result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Асинхронная версия метода generate_sql
+        
+        Args:
+            analysis_result: Результат анализа запроса пользователя
+            
+        Returns:
+            Dictionary с SQL-запросом и его объяснением
+        """
+        # Используем asyncio.to_thread для выполнения синхронного метода в отдельном потоке
+        return await asyncio.to_thread(self.generate_sql, analysis_result)
+
         
     def generate_sql(self, analysis_result: Dict[str, Any]) -> Dict[str, Any]:
         """

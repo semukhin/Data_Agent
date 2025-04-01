@@ -1,3 +1,4 @@
+import asyncio
 from typing import Dict, Any
 from ..services.deepseek_adapter import DeepseekAdapter
 
@@ -62,6 +63,19 @@ class AnalyzerAgent:
             tables_info.append(table_info)
         
         return "\n".join(tables_info)
+    
+    async def process_query_async(self, user_query: str) -> Dict[str, Any]:
+        """
+        Асинхронная версия метода process_query
+        
+        Args:
+            user_query: Текстовый запрос пользователя
+            
+        Returns:
+            Dictionary с результатами анализа
+        """
+        return await asyncio.to_thread(self.process_query, user_query)
+
         
     def process_query(self, user_query: str) -> Dict[str, Any]:
         """

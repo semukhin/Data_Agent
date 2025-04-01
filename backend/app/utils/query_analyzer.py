@@ -1,11 +1,12 @@
 import re
+import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, Any, Tuple
 
-from backend.app.services.dashboard_service import DashboardService
-from backend.app.services.deepseek_adapter import DeepseekAdapter
-from backend.app.services.deepseek_adapter import deepseek_adapter
-from backend.app.utils.visualization_manager import create_optimized_visualization
+from ..services.dashboard_service import DashboardService
+from ..services.deepseek_adapter import deepseek_adapter
+from ..utils.visualization_manager import create_optimized_visualization
+
 
 def extract_time_period(query_text: str) -> Tuple[datetime, datetime]:
     """Определяет временной период из запроса пользователя"""
@@ -288,3 +289,7 @@ async def optimized_process_query(query: str, db_service: DashboardService) -> D
         "visualization_type": pre_analysis["visualization_type"],
         "title": generate_title_from_analysis(pre_analysis, query)
     }
+
+def execute_raw_query(self, sql_query):
+    """Выполняет произвольный SQL-запрос и возвращает результаты в DataFrame"""
+    return pd.read_sql(sql_query, self.db_connection)

@@ -21,7 +21,6 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Проверка аутентификации при загрузке приложения
   useEffect(() => {
     const checkAuth = () => {
       const authenticated = AuthService.isAuthenticated();
@@ -32,18 +31,15 @@ function App() {
     checkAuth();
   }, []);
 
-  // Обработчик успешной авторизации
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
   };
 
-  // Обработчик выхода из системы
   const handleLogout = () => {
     AuthService.logout();
     setIsAuthenticated(false);
   };
 
-  // Отображение загрузки при проверке авторизации
   if (loading) {
     return (
       <Box sx={{ 
@@ -57,21 +53,13 @@ function App() {
     );
   }
 
-  // Отображение страницы авторизации или основного интерфейса
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="App">
-        <header className="App-header">
-          <h1>Data Agent</h1>
-        </header>
-        <main>
-          <QueryInput 
-            onQueryResult={(data) => console.log('Результат:', data)}
-            onQueryStart={() => console.log('Запрос начат')}
-            onQueryError={(error) => console.error('Ошибка:', error)}
-          />
-        </main>
-      </div>
+      {isAuthenticated ? (
+        <MainLayout onLogout={handleLogout} />
+      ) : (
+        <LoginPage onLoginSuccess={handleLoginSuccess} />
+      )}
     </QueryClientProvider>
   );
 }
