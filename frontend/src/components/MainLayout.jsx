@@ -5,7 +5,6 @@ import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
-import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import QueryInput from './QueryInput';

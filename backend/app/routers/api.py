@@ -4,7 +4,6 @@ from ..dependencies import get_db, get_analyzer_agent, get_sql_agent, get_viz_ag
 from ..schemas.requests import QueryRequest, MetadataRequest, SQLRequest
 from ..schemas.responses import QueryResponse, MetadataResponse
 from ..schemas.pagination import PaginationParams, paginate
-from ..services.query_processor import process_query
 from ..dependencies import get_data_analysis_service
 from ..services.data_analysis_service import DataAnalysisService
 
@@ -41,6 +40,8 @@ async def analyze_query(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+# Rest of the router remains the same as in your original file
 
 @router.get("/metadata", response_model=MetadataResponse)
 async def get_metadata(

@@ -3,16 +3,16 @@ import { Box, CircularProgress } from '@mui/material';
 import MainLayout from './components/MainLayout';
 import LoginPage from './components/LoginPage';
 import { AuthService } from './services/auth';
-import { QueryClientProvider } from 'react-query';
-import QueryInput from './components/QueryInput';
+import { QueryClient, QueryClientProvider } from 'react-query';
 import './App.css';
 
-const queryClient = new QueryClientProvider({
+// Create a client
+const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000,
-      cacheTime: 30 * 60 * 1000,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 30 * 60 * 1000, // 30 minutes
     },
   },
 });
