@@ -2,35 +2,42 @@ import os
 from typing import Dict, Any, List, Optional
 import requests
 import json
+import hashlib
+import asyncio
+import httpx
 
 class DeepseekAdapter:
-    """Адаптер для взаимодействия с DeepSeek API"""
+    # Добавляем кэширование запросов
+    _cache = {}
     
     def __init__(self):
         self.api_key = os.getenv("DEEPSEEK_API_KEY")
         self.api_base = os.getenv("DEEPSEEK_API_BASE")
         self.model = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")
         
+        # Настройка сессии HTTP для повторного использования соединений
+        self.session = requests.Session()
+        
         if not self.api_key or not self.api_base:
             raise ValueError("DEEPSEEK_API_KEY и DEEPSEEK_API_BASE должны быть установлены в .env")
     
     def generate_response(self, 
-                          prompt: str, 
-                          system_message: Optional[str] = None,
-                          temperature: float = 0.7,
-                          max_tokens: int = 2000) -> Dict[str, Any]:
+                         prompt: str, 
+                         system_message: Optional[str] = None,
+                         temperature: float = 0.7,
+                         max_tokens: int = 2000) -> Dict[str, Any]:
         """
-        Отправляет запрос к DeepSeek API и возвращает ответ
+        Отправляет запрос к DeepSeek API и возвращает ответ с кэшированием
+        """
+        # Формируем ключ кэша
+        cache_key = hashlib.md5((
+            f"{prompt}|{system_message}|{temperature}|{max_tokens}"
+        ).encode()).hexdigest()
         
-        Args:
-            prompt: Текст запроса
-            system_message: Системное сообщение для модели
-            temperature: Температура (степень случайности) ответа
-            max_tokens: Максимальное количество токенов в ответе
+        # Проверяем кэш
+        if cache_key in self._cache:
+            return self._cache[cache_key]
             
-        Returns:
-            Dictionary с ответом API
-        """
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
@@ -50,15 +57,73 @@ class DeepseekAdapter:
         }
         
         try:
-            response = requests.post(
+            response = self.session.post(
                 f"{self.api_base}/chat/completions",
                 headers=headers,
                 json=payload
             )
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            
+            # Сохраняем в кэш
+            self._cache[cache_key] = result
+            
+            return result
         except requests.exceptions.RequestException as e:
             raise Exception(f"Ошибка при запросе к DeepSeek API: {str(e)}")
+    
+    async def generate_response_async(self, 
+                                    prompt: str, 
+                                    system_message: Optional[str] = None,
+                                    temperature: float = 0.7,
+                                    max_tokens: int = 2000) -> Dict[str, Any]:
+        """
+        Асинхронно отправляет запрос к DeepSeek API и возвращает ответ с кэшированием
+        """
+        # Формируем ключ кэша
+        cache_key = hashlib.md5((
+            f"{prompt}|{system_message}|{temperature}|{max_tokens}|{self.model}"
+        ).encode()).hexdigest()
+        
+        # Проверяем кэш
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+        
+        messages = []
+        if system_message:
+            messages.append({"role": "system", "content": system_message})
+        
+        messages.append({"role": "user", "content": prompt})
+        
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.api_base}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=60  # Увеличиваем таймаут для сложных запросов
+                )
+                response.raise_for_status()
+                result = response.json()
+                
+                # Сохраняем в кэш
+                self._cache[cache_key] = result
+                
+                return result
+        except httpx.HTTPError as e:
+            raise Exception(f"Ошибка при асинхронном запросе к DeepSeek API: {str(e)}")
     
     def extract_json_from_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """

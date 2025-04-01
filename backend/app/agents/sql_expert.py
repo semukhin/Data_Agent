@@ -1,3 +1,5 @@
+import datetime
+import re
 from typing import Dict, Any
 from ..services.deepseek_adapter import DeepseekAdapter
 
@@ -91,32 +93,31 @@ class SQLExpertAgent:
         """
         db_info = self._prepare_db_metadata()
         system_message = f"""
-        Ты эксперт по SQL с глубокими знаниями PostgreSQL.
-        Твоя задача - генерировать SQL-запросы для получения данных на основе анализа.
-        
-        Схема базы данных:
+        Ты SQL-эксперт, специализирующийся на анализе данных пользовательской активности.
+
+        Структура представления 'test_staging.user_metrics_dashboard_optimized':
         {db_info}
+
+        ВАЖНЫЕ ПРАВИЛА:
+        1. ВСЕГДА используй ТОЛЬКО представление 'test_staging.user_metrics_dashboard_optimized' для запросов.
+        2. Никогда не используй JOIN с другими таблицами - все необходимые данные уже в представлении.
+        3. Используй следующие подходы для работы с временными данными:
+        - Группировка по неделям: DATE_TRUNC('week', cohort_month)
+        - Группировка по месяцам: DATE_TRUNC('month', cohort_month)
+        - Фильтрация по периоду: cohort_month BETWEEN '2025-01-01' AND '2025-03-31'
+        4. Для анализа по типам пользователей используй:
+        - Фильтрация по типу: WHERE user_type = 'Подписчик' ИЛИ
+        - Фильтрация по флагу: WHERE is_subscriber = 1
+        5. Оптимизируй запросы для максимальной производительности:
+        - Используй нужные агрегирующие функции (COUNT, AVG, SUM)
+        - Всегда добавляй ORDER BY для временных рядов
+        - Ограничивай выборку данных необходимыми полями
         
-        ВАЖНО: Для запросов по пользователям и их активности ВСЕГДА используй представление 'test_staging.user_metrics_dashboard_optimized'.
-        Это представление содержит оптимизированные данные о пользователях и их взаимодействии с платформой.
-        
-        При работе с временными данными:
-        - Для агрегации по неделям используй: DATE_TRUNC('week', cohort_month)
-        - Для агрегации по месяцам используй: DATE_TRUNC('month', cohort_month)
-        - Для фильтрации по периоду используй: cohort_month BETWEEN '2024-12-01' AND '2025-03-31'
-        
-        При запросах для визуализации:
-        - Для линейных графиков (line) важно включить временную колонку и сортировку по ней
-        - Для столбчатых диаграмм (bar) важно включить категориальную колонку и агрегацию
-        - Для круговых диаграмм (pie) важно включить категорию и значение для каждого сектора
-        
-        Ответ должен быть в формате JSON со следующими полями:
+        Ответ СТРОГО в формате JSON:
         {{
-            "sql_query": "полный SQL-запрос",
-            "query_explanation": "пояснение к запросу на русском языке"
+            "sql_query": "полный SQL-запрос для выполнения",
+            "query_explanation": "подробное объяснение запроса на русском языке"
         }}
-        
-        SQL-запрос должен быть корректным, оптимизированным и готовым к исполнению.
         """
         
         user_message = f"""
@@ -186,3 +187,89 @@ class SQLExpertAgent:
             result["sql_query"] = sql_query
         
         return result
+    
+    SQL_TEMPLATES = {
+    "активные_пользователи_по_месяцам": """
+        SELECT DATE_TRUNC('month', cohort_month) AS month,
+               COUNT(DISTINCT user_id) AS active_users
+        FROM test_staging.user_metrics_dashboard_optimized
+        WHERE cohort_month BETWEEN '{start_date}' AND '{end_date}'
+        GROUP BY month
+        ORDER BY month
+    """,
+    
+    "распределение_по_типам_пользователей": """
+        SELECT user_type, COUNT(DISTINCT user_id) AS user_count
+        FROM test_staging.user_metrics_dashboard_optimized
+        WHERE cohort_month BETWEEN '{start_date}' AND '{end_date}'
+        GROUP BY user_type
+        ORDER BY user_count DESC
+    """,
+    
+    "среднее_время_на_платформе": """
+        SELECT DATE_TRUNC('{period}', cohort_month) AS time_period,
+               AVG(avg_session_minutes) AS avg_time
+        FROM test_staging.user_metrics_dashboard_optimized
+        WHERE cohort_month BETWEEN '{start_date}' AND '{end_date}'
+        GROUP BY time_period
+        ORDER BY time_period
+    """
+}
+    
+def extract_time_period(query_text):
+    """Определяет временной период из запроса пользователя"""
+    today = datetime.datetime.now()
+    last_month = today - datetime.timedelta(days=30)
+    last_6_months = today - datetime.timedelta(days=180)
+    
+    # Определяем упоминания временных периодов в запросе
+    if "прошлый месяц" in query_text.lower() or "предыдущий месяц" in query_text.lower():
+        return last_month.replace(day=1), today.replace(day=1) - datetime.timedelta(days=1)
+    elif "последние 6 месяцев" in query_text.lower() or "за 6 месяцев" in query_text.lower():
+        return last_6_months, today
+    elif "этот год" in query_text.lower() or "текущий год" in query_text.lower():
+        return datetime.datetime(today.year, 1, 1), today
+    
+    # Ищем упоминание конкретных месяцев и годов
+    month_pattern = r'(январ[ьея]|феврал[ьея]|март[ае]?|апрел[ьея]|ма[йея]|июн[ьея]|июл[ьея]|август[ае]?|сентябр[ьея]|октябр[ьея]|ноябр[ьея]|декабр[ьея]) (\d{4})'
+    matches = re.findall(month_pattern, query_text.lower())
+    
+    if matches:
+        month_dict = {
+            'январ': 1, 'феврал': 2, 'март': 3, 'апрел': 4, 'ма': 5, 'июн': 6,
+            'июл': 7, 'август': 8, 'сентябр': 9, 'октябр': 10, 'ноябр': 11, 'декабр': 12
+        }
+        
+        for month_str, year_str in matches:
+            for month_key, month_num in month_dict.items():
+                if month_str.startswith(month_key):
+                    month = month_num
+                    year = int(year_str)
+                    start_date = datetime.datetime(year, month, 1)
+                    if month == 12:
+                        end_date = datetime.datetime(year + 1, 1, 1) - datetime.timedelta(days=1)
+                    else:
+                        end_date = datetime.datetime(year, month + 1, 1) - datetime.timedelta(days=1)
+                    return start_date, end_date
+    
+    # По умолчанию возвращаем последние 30 дней
+    return last_month, today
+
+def optimize_sql_query(sql_query):
+    """Оптимизирует SQL-запрос для лучшей производительности"""
+    # Убедимся, что запрос использует только нужное представление
+    if "FROM" in sql_query.upper() and "test_staging.user_metrics_dashboard_optimized" not in sql_query:
+        sql_query = sql_query.replace("FROM", "FROM test_staging.user_metrics_dashboard_optimized")
+    
+    # Проверим наличие ORDER BY для временных рядов
+    if "DATE_TRUNC" in sql_query and "ORDER BY" not in sql_query.upper():
+        if "GROUP BY" in sql_query.upper():
+            group_by_column = re.search(r'GROUP BY\s+([^\s,]+)', sql_query, re.IGNORECASE)
+            if group_by_column:
+                sql_query += f" ORDER BY {group_by_column.group(1)}"
+    
+    # Добавим LIMIT, если его нет
+    if "LIMIT" not in sql_query.upper():
+        sql_query += " LIMIT 1000"
+    
+    return sql_query

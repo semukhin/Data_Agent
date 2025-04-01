@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, TextField, Button, Paper, Typography, FormControl, InputLabel, Select, MenuItem, Divider, Alert } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import HistoryIcon from '@mui/icons-material/History';
@@ -6,6 +6,7 @@ import { analyzeQuery } from '../services/api';
 import { t } from '../services/language';
 
 const DEFAULT_PAGE_SIZE = 100;
+const QUERY_CACHE_KEY = 'query_results_cache';
 
 function QueryInput({ onQueryResult, onQueryStart, onQueryError }) {
   const [query, setQuery] = useState('');
@@ -14,6 +15,55 @@ function QueryInput({ onQueryResult, onQueryStart, onQueryError }) {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [queryHistory, setQueryHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [queryCache, setQueryCache] = useState(() => {
+    // Инициализация кэша из localStorage
+    const cachedResults = localStorage.getItem(QUERY_CACHE_KEY);
+    return cachedResults ? JSON.parse(cachedResults) : {};
+  });
+
+  // Сохранение кэша в localStorage при изменении
+  useEffect(() => {
+    try {
+      localStorage.setItem(QUERY_CACHE_KEY, JSON.stringify(queryCache));
+    } catch (e) {
+      console.error('Ошибка при сохранении кэша:', e);
+    }
+  }, [queryCache]);
+
+  // Мемоизированная функция выполнения запроса
+  const executeQuery = useCallback(async (queryText, options) => {
+    try {
+      const cacheKey = `${queryText}:${options.pageSize}`;
+      
+      // Проверяем, есть ли результат в кэше и не устарел ли он
+      if (queryCache[cacheKey]) {
+        const { timestamp, result } = queryCache[cacheKey];
+        const now = Date.now();
+        
+        // Если кэш не старше 5 минут, используем его
+        if (now - timestamp < 5 * 60 * 1000) {
+          console.log('Используем кэшированный результат для запроса:', queryText);
+          return result;
+        }
+      }
+      
+      // Если кэша нет или он устарел, выполняем запрос
+      const result = await analyzeQuery(queryText, options);
+      
+      // Обновляем кэш
+      setQueryCache(prevCache => ({
+        ...prevCache,
+        [cacheKey]: {
+          timestamp: Date.now(),
+          result
+        }
+      }));
+      
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }, [queryCache]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,8 +83,8 @@ function QueryInput({ onQueryResult, onQueryStart, onQueryError }) {
       setQueryHistory(newHistory);
       localStorage.setItem('query_history', JSON.stringify(newHistory));
       
-      // Передаем размер страницы как параметр
-      const result = await analyzeQuery(query, { pageSize });
+      // Выполняем запрос с кэшированием
+      const result = await executeQuery(query, { pageSize });
       
       if (onQueryResult) {
         onQueryResult(result);
@@ -58,7 +108,7 @@ function QueryInput({ onQueryResult, onQueryStart, onQueryError }) {
   };
   
   // Загружаем историю запросов при монтировании компонента
-  React.useEffect(() => {
+  useEffect(() => {
     const savedHistory = localStorage.getItem('query_history');
     if (savedHistory) {
       try {
@@ -104,6 +154,8 @@ function QueryInput({ onQueryResult, onQueryStart, onQueryError }) {
           </Button>
         </Box>
       </Box>
+      
+      {/* Остальной код компонента без изменений */}
       
       {showHistory && queryHistory.length > 0 && (
         <Box sx={{ mb: 2, maxHeight: '150px', overflowY: 'auto' }}>
@@ -164,4 +216,4 @@ function QueryInput({ onQueryResult, onQueryStart, onQueryError }) {
   );
 }
 
-export default QueryInput;
+export default React.memo(QueryInput);

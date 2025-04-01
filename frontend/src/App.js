@@ -3,6 +3,19 @@ import { Box, CircularProgress } from '@mui/material';
 import MainLayout from './components/MainLayout';
 import LoginPage from './components/LoginPage';
 import { AuthService } from './services/auth';
+import { QueryClientProvider } from 'react-query';
+import QueryInput from './components/QueryInput';
+import './App.css';
+
+const queryClient = new QueryClientProvider({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000,
+      cacheTime: 30 * 60 * 1000,
+    },
+  },
+});
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -46,13 +59,20 @@ function App() {
 
   // Отображение страницы авторизации или основного интерфейса
   return (
-    <>
-      {isAuthenticated ? (
-        <MainLayout onLogout={handleLogout} />
-      ) : (
-        <LoginPage onLoginSuccess={handleLoginSuccess} />
-      )}
-    </>
+    <QueryClientProvider client={queryClient}>
+      <div className="App">
+        <header className="App-header">
+          <h1>Data Agent</h1>
+        </header>
+        <main>
+          <QueryInput 
+            onQueryResult={(data) => console.log('Результат:', data)}
+            onQueryStart={() => console.log('Запрос начат')}
+            onQueryError={(error) => console.error('Ошибка:', error)}
+          />
+        </main>
+      </div>
+    </QueryClientProvider>
   );
 }
 
