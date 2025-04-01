@@ -17,9 +17,49 @@ class AnalyzerAgent:
         """
         tables_info = []
         
+        # Сначала добавляем наше ключевое представление с подробным описанием
+        if "test_staging.user_metrics_dashboard_optimized" in self.db_metadata:
+            table_data = self.db_metadata["test_staging.user_metrics_dashboard_optimized"]
+            
+            # Если есть отдельное общее описание таблицы, добавляем его
+            if "description" in table_data:
+                tables_info.append(f"{table_data['description']}\n")
+            
+            # Добавляем информацию о колонках с их описанием
+            tables_info.append("Детальная информация о колонках представления test_staging.user_metrics_dashboard_optimized:")
+            
+            for column in table_data["columns"]:
+                column_info = f"- {column['name']} ({column['type']})"
+                if "description" in column:
+                    column_info += f": {column['description']}"
+                tables_info.append(column_info)
+            
+            # Добавляем примеры типичных запросов к представлению
+            tables_info.append("\nТипичные запросы к представлению test_staging.user_metrics_dashboard_optimized:")
+            tables_info.append("1. Анализ активности по времени: GROUP BY DATE_TRUNC('week', cohort_month)")
+            tables_info.append("2. Анализ по типам пользователей: GROUP BY user_type")
+            tables_info.append("3. Анализ метрик вовлеченности: AVG(total_sessions), AVG(active_days), AVG(avg_session_minutes)")
+            
+            tables_info.append("")  # Пустая строка для разделения
+        
+        # Затем добавляем остальные таблицы с базовым описанием
         for table_name, table_data in self.db_metadata.items():
-            columns = ", ".join([f"{c['name']} ({c['type']})" for c in table_data["columns"]])
-            tables_info.append(f"Таблица/Представление: {table_name}\nКолонки: {columns}\n")
+            if table_name == "test_staging.user_metrics_dashboard_optimized":
+                continue  # Пропускаем, так как уже добавили выше
+                
+            # Добавляем базовую информацию о таблице/представлении
+            table_info = f"Таблица/Представление: {table_name}\nКолонки: "
+            
+            # Собираем информацию о колонках
+            columns = []
+            for column in table_data["columns"]:
+                column_info = f"{column['name']} ({column['type']})"
+                if "description" in column:
+                    column_info += f" - {column['description']}"
+                columns.append(column_info)
+            
+            table_info += ", ".join(columns)
+            tables_info.append(table_info)
         
         return "\n".join(tables_info)
         
@@ -36,11 +76,20 @@ class AnalyzerAgent:
         # Подготовка системного промпта с метаданными БД
         db_info = self._prepare_db_metadata()
         system_message = f"""
-        Ты эксперт по анализу данных с доступом к следующим таблицам и представлениям базы данных:
+        Ты эксперт по анализу данных с доступом к представлению базы данных PostgreSQL:
         {db_info}
+        
+        ВАЖНО: Для запросов, относящихся к пользователям, их активности и метрикам, ВСЕГДА рекомендуй использовать 
+        представление 'test_staging.user_metrics_dashboard_optimized'. Это представление содержит всю необходимую 
+        информацию о пользовательской активности и метриках вовлеченности, специально оптимизированную для анализа.
         
         Твоя задача - понять запрос пользователя о визуализации данных и определить, 
         какие данные нужно получить из базы данных и как их следует визуализировать.
+        
+        При анализе запросов о пользователях и их активности обращай внимание на:
+        1. Временной аспект (по дням, неделям, месяцам) - используй поле cohort_month
+        2. Тип пользователей (подписчики, активированные, заинтересованные) - используй поле user_type
+        3. Метрики вовлеченности (сессии, время, просмотры) - используй соответствующие поля из представления
         
         Ответ должен быть в формате JSON со следующими полями:
         {{
@@ -48,6 +97,13 @@ class AnalyzerAgent:
             "visualization_type": "тип визуализации (bar, line, scatter, pie, table)",
             "sql_hints": "подсказки для написания SQL-запроса"
         }}
+        
+        Рекомендации по выбору типа визуализации:
+        - Для анализа тренда во времени (динамика метрик): 'line'
+        - Для сравнения метрик между категориями: 'bar'
+        - Для распределения значений по категориям: 'pie'
+        - Для анализа корреляций между метриками: 'scatter'
+        - Для детального просмотра данных: 'table'
         """
         
         # Получение ответа от DeepSeek
@@ -76,8 +132,41 @@ class AnalyzerAgent:
         for field in required_fields:
             if field not in result:
                 if field == "visualization_type":
-                    result[field] = "table"  # По умолчанию - таблица
+                    # Определяем тип визуализации на основе ключевых слов в запросе
+                    if any(keyword in user_query.lower() for keyword in ["тренд", "динамика", "по времени", "по неделям", "по месяцам"]):
+                        result[field] = "line"
+                    elif any(keyword in user_query.lower() for keyword in ["сравни", "сравнение", "распределение"]):
+                        result[field] = "bar"
+                    elif any(keyword in user_query.lower() for keyword in ["доля", "процент", "круговая"]):
+                        result[field] = "pie"
+                    elif any(keyword in user_query.lower() for keyword in ["связь", "корреляция", "зависимость"]):
+                        result[field] = "scatter"
+                    else:
+                        result[field] = "line"  # По умолчанию линейный график
                 else:
                     result[field] = ""
+        
+        # Проверяем и улучшаем SQL подсказки
+        if "sql_hints" in result:
+            # Если в подсказках нет упоминания о представлении, добавляем его
+            if "test_staging.user_metrics_dashboard_optimized" not in result["sql_hints"]:
+                user_activity_keywords = ["пользовател", "активност", "вовлеченност", "конверси", "юзер", "метрик"]
+                if any(keyword in user_query.lower() for keyword in user_activity_keywords):
+                    result["sql_hints"] += " Используйте представление test_staging.user_metrics_dashboard_optimized для анализа пользовательских данных."
+            
+            # Определяем временной период из запроса
+            if any(period in user_query.lower() for period in ["по неделям", "еженедельно", "недельный"]):
+                if "DATE_TRUNC('week'" not in result["sql_hints"]:
+                    result["sql_hints"] += " Используйте DATE_TRUNC('week', cohort_month) для группировки по неделям."
+            elif any(period in user_query.lower() for period in ["по месяцам", "ежемесячно", "месячный"]):
+                if "DATE_TRUNC('month'" not in result["sql_hints"]:
+                    result["sql_hints"] += " Используйте DATE_TRUNC('month', cohort_month) для группировки по месяцам."
+            
+            # Добавляем рекомендации для конкретных видов анализа
+            if "тип" in user_query.lower() and "пользователь" in user_query.lower():
+                result["sql_hints"] += " Используйте поле user_type или флаги is_interested_user, is_activated_user, is_subscriber для сегментации пользователей."
+            
+            if "конверсия" in user_query.lower() or "воронка" in user_query.lower():
+                result["sql_hints"] += " Для анализа конверсионной воронки используйте COUNT(is_interested_user), COUNT(is_activated_user), COUNT(is_subscriber)."
         
         return result

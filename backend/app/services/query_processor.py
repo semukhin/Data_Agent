@@ -1,10 +1,12 @@
 import pandas as pd
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from ..tools.db_tool import DatabaseTool
 from ..tools.viz_tool import VisualizationTool
+from ..schemas.pagination import PaginationParams, paginate
 
-def process_query(query: str, analyzer, sql_agent, viz_agent, db: DatabaseTool) -> Dict[str, Any]:
+
+def process_query(query: str, analyzer, sql_agent, viz_agent, db: DatabaseTool, pagination: Optional[PaginationParams] = None) -> Dict[str, Any]:
     """
     Обрабатывает запрос пользователя и возвращает результаты
     
@@ -14,6 +16,7 @@ def process_query(query: str, analyzer, sql_agent, viz_agent, db: DatabaseTool) 
         sql_agent: Агент для генерации SQL-запроса
         viz_agent: Агент для генерации визуализации
         db: Инструмент для выполнения запросов к базе данных
+        pagination: Параметры пагинации (опционально)
         
     Returns:
         Dictionary с результатами обработки запроса
@@ -37,6 +40,12 @@ def process_query(query: str, analyzer, sql_agent, viz_agent, db: DatabaseTool) 
     # Получение данных из результата запроса
     data = db_result["data"]
     
+    # Применение пагинации, если она указана
+    paginated_data = None
+    if pagination:
+        data_records = data.to_dict(orient="records")
+        paginated_data = paginate(data_records, pagination)
+    
     # Шаг 4: Генерация визуализации
     viz_result = viz_agent.generate_visualization_code(
         data=data,
@@ -57,7 +66,7 @@ def process_query(query: str, analyzer, sql_agent, viz_agent, db: DatabaseTool) 
     })
     
     # Формирование итогового результата
-    return {
+    result = {
         "data": data.to_dict(orient="records"),
         "visualization": viz_data.get("figure", {}),
         "sql_query": sql_result["sql_query"],
@@ -66,3 +75,15 @@ def process_query(query: str, analyzer, sql_agent, viz_agent, db: DatabaseTool) 
         "title": viz_result.get("title", "Результаты анализа"),
         "description": viz_result.get("description", "")
     }
+    
+    # Добавление информации о пагинации, если она применялась
+    if paginated_data:
+        result["data"] = paginated_data["items"]
+        result["pagination"] = {
+            "total": paginated_data["total"],
+            "page": paginated_data["page"],
+            "page_size": paginated_data["page_size"],
+            "total_pages": paginated_data["total_pages"]
+        }
+    
+    return result
