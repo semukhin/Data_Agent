@@ -118,15 +118,4 @@ function VisualizationPanel({ queryResult, loading, error }) {
   );
 }
 
-// Global Plotly configuration
-Plotly.setPlotConfig({
-  displayModeBar: true,
-  staticPlot: false,
-  doubleClick: 'reset+autosize',
-  showTips: false,
-  displaylogo: false,
-  scrollZoom: true,
-  responsive: true
-});
-
 export default React.memo(VisualizationPanel);

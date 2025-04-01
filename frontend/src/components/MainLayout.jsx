@@ -6,7 +6,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import IconButton from '@mui/material/IconButton';
-import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import LogoutIcon from '@mui/icons-material/Logout';
 import QueryInput from './QueryInput';
 import VisualizationPanel from './VisualizationPanel';
 import LanguageSelector from './LanguageSelector';
@@ -60,7 +60,7 @@ function MainLayout({ onLogout }) {
             sx={{ ml: 2 }}
             title={t('auth', 'logout')}
           >
-            <ExitToAppIcon />
+            <LogoutIcon />
           </IconButton>
         </Toolbar>
       </AppBar>
