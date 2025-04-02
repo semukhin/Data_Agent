@@ -56,7 +56,8 @@ function VisualizationPanel({ queryResult, loading, error }) {
     return null;
   }, [queryResult?.visualization]);
   
-  // Обновленный useMemo для updatedFigure с fallback
+
+
   const updatedFigure = useMemo(() => {
     if (!memoizedFigure || !memoizedFigure.data) {
       return null;
@@ -76,7 +77,7 @@ function VisualizationPanel({ queryResult, loading, error }) {
     const updatedData = (memoizedFigure.data || []).map((trace, index) => ({
       ...trace,
       type: trace.type || 'scatter',
-      mode: trace.mode || 'lines+markers',
+      mode: showDataLabels ? 'lines+markers+text' : 'lines+markers', // Включаем текстовые метки
       marker: { 
         ...(trace.marker || {}),
         color: colors[index % colors.length],
@@ -85,6 +86,14 @@ function VisualizationPanel({ queryResult, loading, error }) {
       line: {
         ...(trace.line || {}),
         width: 2
+      },
+      // Добавляем текстовые метки
+      text: showDataLabels ? trace.y : undefined,
+      textposition: 'top center',
+      textfont: {
+        family: 'Arial, sans-serif',
+        size: 12,
+        color: colors[index % colors.length]
       },
       // Переводим название колонки в более читаемый формат
       name: trace.name 
@@ -124,7 +133,7 @@ function VisualizationPanel({ queryResult, loading, error }) {
       data: updatedData,
       layout: updatedLayout
     };
-  }, [memoizedFigure]);
+  }, [memoizedFigure, showDataLabels]);
 
   // Plotly configuration
   const plotlyConfig = useMemo(() => ({
