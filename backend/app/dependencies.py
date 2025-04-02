@@ -7,6 +7,10 @@ from .tools.db_tool import DatabaseTool
 from .agents.analyzer import AnalyzerAgent
 from .agents.sql_expert import SQLExpertAgent
 from .agents.visualizer import VisualizerAgent
+from .services.deepseek_adapter import DeepseekAdapter
+# Импортируем новые сервисы (эти файлы нужно будет создать)
+from .services.data_analysis_service import DataAnalysisService
+from .services.dashboard_service import DashboardService
 
 # Создание соединения с базой данных
 def get_db_connection():
@@ -16,37 +20,37 @@ def get_db_connection():
         f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
     )
 
-# Описание представления user_metrics_dashboard_optimized
+# Обновленное описание представления user_metrics_dashboard_optimized
 USER_METRICS_DASHBOARD_DESCRIPTION = """
 Представление test_staging.user_metrics_dashboard_optimized содержит сводные данные о поведении пользователей на платформе Atlantix.
 Оно сделано специально для удобного анализа пользовательской активности и метрик вовлеченности.
 
 Столбцы представления и их назначение:
-- user_id (text): Уникальный идентификатор пользователя
-- cohort_month (timestamp): Месяц, в котором пользователь впервые посетил платформу (используется для когортного анализа)
-- user_type (text): Категория пользователя: "Подписчик" (платный), "Активированный" (использует ключевые функции), "Заинтересованный" (только просматривает)
-- technology_views (bigint): Количество просмотров страниц технологий
-- technology_sessions (bigint): Количество сессий, в которых были просмотры технологий
-- business_plan_clicks (bigint): Количество кликов по элементам бизнес-планов
-- custom_business_plan_views (bigint): Количество просмотров индивидуальных бизнес-планов
+- user_id (text): Уникальный идентификатор зарегистрированного пользователя (посетитель который ещё не зарегистрировался - device_id)
+- cohort_month (timestamp): Месяц, когда пользователь впервые посетил платформу (для когортного анализа), когортный период в контексте данного представления
+- user_type (text): Категория пользователя: "Подписчик", "Активированный", "Заинтересованный"
+- technology_views (bigint): Количество просмотров страниц "технологий"
+- technology_sessions (bigint): Количество сессий с просмотром страниц "технологий"
+- business_plan_clicks (bigint): Количество просмотров страницы "бизнес-планов"
+- custom_business_plan_views (bigint): Количество просмотров страницы "Custom Business Plans"
 - discovery_views (bigint): Количество просмотров страницы "Discover"
-- collection_views (bigint): Количество просмотров коллекций
+- collection_views (bigint): Количество просмотров "Коллекций"
 - search_queries (bigint): Количество поисковых запросов
-- total_sessions (bigint): Общее количество сессий пользователя
-- active_days (bigint): Количество дней, в которые пользователь был активен
+- total_sessions (bigint): Общее количество сессий зарегистрированного пользователя
+- active_days (bigint): Количество дней, когда зарегистрированный пользователь был активен
 - avg_session_minutes (numeric): Средняя продолжительность сессии в минутах
 - total_platform_minutes (numeric): Общее время, проведенное на платформе в минутах
 - total_discover_minutes (numeric): Общее время, проведенное на странице "Discover" в минутах
-- minutes_to_first_tech_view (numeric): Время в минутах от первого визита до первого просмотра технологии
+- minutes_to_first_tech_view (numeric): Время в минутах от первого визита до первого просмотра страницы "технологии"
 - minutes_to_first_favorites (numeric): Время в минутах от первого визита до первого добавления в избранное
-- avg_discover_minutes_per_session (numeric): Среднее время, проведенное на странице "Discover" за сессию
-- avg_discover_minutes_per_month (numeric): Среднее время, проведенное на странице "Discover" в месяц
-- avg_tech_views_per_session (numeric): Среднее количество просмотров технологий за сессию
-- avg_business_plan_clicks_per_session (numeric): Среднее количество кликов по бизнес-планам за сессию
+- avg_discover_minutes_per_session (numeric): Среднее время на странице "Discover" за сессию
+- avg_discover_minutes_per_month (numeric): Среднее время на странице "Discover" в месяц
+- avg_tech_views_per_session (numeric): Среднее количество просмотров страниц "технологий" за сессию
+- avg_business_plan_clicks_per_session (numeric): Среднее количество просмотров страницы "бизнес-планы" за сессию
 - avg_search_queries_per_session (numeric): Среднее количество поисковых запросов за сессию
-- is_interested_user (integer): Флаг (1/null) - является ли пользователь "заинтересованным"
-- is_activated_user (integer): Флаг (1/null) - является ли пользователь "активированным"
-- is_subscriber (integer): Флаг (1/null) - является ли пользователь "подписчиком"
+- is_interested_user (integer): Флаг (1/null) - является ли пользователь "заинтересованным" из имеющихся профилей в user_type
+- is_activated_user (integer): Флаг (1/null) - является ли пользователь "активированным" из имеющихся профилей в user_type
+- is_subscriber (integer): Флаг (1/null) - является ли пользователь подписчиком из имеющихся профилей в user_type
 
 Представление оптимально для:
 - Анализа активности пользователей по временным периодам
@@ -71,29 +75,29 @@ def get_db_metadata() -> Dict[str, Any]:
             "description": USER_METRICS_DASHBOARD_DESCRIPTION,
             "columns": [
                 {"name": "user_id", "type": "text", "nullable": False, 
-                 "description": "Уникальный идентификатор пользователя"},
+                 "description": "Уникальный идентификатор зарегистрированного пользователя"},
                 {"name": "cohort_month", "type": "timestamp", "nullable": True, 
-                 "description": "Месяц, в котором пользователь впервые посетил платформу (для когортного анализа)"},
+                 "description": "Месяц, когда пользователь впервые посетил платформу (для когортного анализа), когортный период в контексте данного представления"},
                 {"name": "user_type", "type": "text", "nullable": True, 
-                 "description": "Категория пользователя: 'Подписчик' (платный), 'Активированный' (использует ключевые функции), 'Заинтересованный' (только просматривает)"},
+                 "description": "Категория пользователя ('Подписчик', 'Активированный', 'Заинтересованный')"},
                 {"name": "technology_views", "type": "bigint", "nullable": False, 
-                 "description": "Количество просмотров страниц технологий"},
+                 "description": "Количество просмотров страниц 'технологий'"},
                 {"name": "technology_sessions", "type": "bigint", "nullable": False, 
-                 "description": "Количество сессий, в которых были просмотры технологий"},
+                 "description": "Количество сессий с просмотром страниц 'технологий'"},
                 {"name": "business_plan_clicks", "type": "bigint", "nullable": False, 
-                 "description": "Количество кликов по элементам бизнес-планов"},
+                 "description": "Количество просмотров страницы 'бизнес-планов'"},
                 {"name": "custom_business_plan_views", "type": "bigint", "nullable": False, 
-                 "description": "Количество просмотров индивидуальных бизнес-планов"},
+                 "description": "Количество просмотров страницы 'Custom Business Plans'"},
                 {"name": "discovery_views", "type": "bigint", "nullable": False, 
                  "description": "Количество просмотров страницы 'Discover'"},
                 {"name": "collection_views", "type": "bigint", "nullable": False, 
-                 "description": "Количество просмотров коллекций"},
+                 "description": "Количество просмотров 'Коллекций'"},
                 {"name": "search_queries", "type": "bigint", "nullable": False, 
                  "description": "Количество поисковых запросов"},
                 {"name": "total_sessions", "type": "bigint", "nullable": False, 
-                 "description": "Общее количество сессий пользователя"},
+                 "description": "Общее количество сессий зарегистрированного пользователя"},
                 {"name": "active_days", "type": "bigint", "nullable": False, 
-                 "description": "Количество дней, в которые пользователь был активен"},
+                 "description": "Количество дней, когда зарегистрированный пользователь был активен"},
                 {"name": "avg_session_minutes", "type": "numeric", "nullable": False, 
                  "description": "Средняя продолжительность сессии в минутах"},
                 {"name": "total_platform_minutes", "type": "numeric", "nullable": False, 
@@ -101,25 +105,25 @@ def get_db_metadata() -> Dict[str, Any]:
                 {"name": "total_discover_minutes", "type": "numeric", "nullable": False, 
                  "description": "Общее время, проведенное на странице 'Discover' в минутах"},
                 {"name": "minutes_to_first_tech_view", "type": "numeric", "nullable": True, 
-                 "description": "Время в минутах от первого визита до первого просмотра технологии"},
+                 "description": "Время в минутах от первого визита до первого просмотра страницы 'технологии'"},
                 {"name": "minutes_to_first_favorites", "type": "numeric", "nullable": True, 
                  "description": "Время в минутах от первого визита до первого добавления в избранное"},
                 {"name": "avg_discover_minutes_per_session", "type": "numeric", "nullable": False, 
-                 "description": "Среднее время, проведенное на странице 'Discover' за сессию"},
+                 "description": "Среднее время на странице 'Discover' за сессию"},
                 {"name": "avg_discover_minutes_per_month", "type": "numeric", "nullable": False, 
-                 "description": "Среднее время, проведенное на странице 'Discover' в месяц"},
+                 "description": "Среднее время на странице 'Discover' в месяц"},
                 {"name": "avg_tech_views_per_session", "type": "numeric", "nullable": True, 
-                 "description": "Среднее количество просмотров технологий за сессию"},
+                 "description": "Среднее количество просмотров страниц 'технологий' за сессию"},
                 {"name": "avg_business_plan_clicks_per_session", "type": "numeric", "nullable": True, 
-                 "description": "Среднее количество кликов по бизнес-планам за сессию"},
+                 "description": "Среднее количество просмотров страницы 'бизнес-планы' за сессию"},
                 {"name": "avg_search_queries_per_session", "type": "numeric", "nullable": True, 
                  "description": "Среднее количество поисковых запросов за сессию"},
                 {"name": "is_interested_user", "type": "integer", "nullable": True, 
-                 "description": "Флаг (1/null) - является ли пользователь 'заинтересованным'"},
+                 "description": "Флаг (1/null) - является ли пользователь 'заинтересованным' из имеющихся профилей в user_type"},
                 {"name": "is_activated_user", "type": "integer", "nullable": True, 
-                 "description": "Флаг (1/null) - является ли пользователь 'активированным'"},
+                 "description": "Флаг (1/null) - является ли пользователь 'активированным' из имеющихся профилей в user_type"},
                 {"name": "is_subscriber", "type": "integer", "nullable": True, 
-                 "description": "Флаг (1/null) - является ли пользователь 'подписчиком'"}
+                 "description": "Флаг (1/null) - является ли пользователь подписчиком из имеющихся профилей в user_type"}
             ],
             "primary_keys": ["user_id"],
             "foreign_keys": [],
@@ -161,3 +165,19 @@ def get_sql_agent():
 def get_viz_agent():
     """Предоставляет агента для генерации визуализаций"""
     return VisualizerAgent()
+
+# Новые зависимости для оптимизированных сервисов
+def get_deepseek_adapter():
+    """Предоставляет адаптер для работы с DeepSeek API"""
+    return DeepseekAdapter()
+
+def get_dashboard_service():
+    """Предоставляет сервис для работы с представлением dashboard"""
+    db_connection = get_db_connection()
+    return DashboardService(db_connection)
+
+def get_data_analysis_service():
+    """Предоставляет сервис для анализа данных и генерации визуализаций"""
+    db_connection = get_db_connection()
+    deepseek_adapter = get_deepseek_adapter()
+    return DataAnalysisService(db_connection, deepseek_adapter)

@@ -4,65 +4,44 @@ from ..dependencies import get_db, get_analyzer_agent, get_sql_agent, get_viz_ag
 from ..schemas.requests import QueryRequest, MetadataRequest, SQLRequest
 from ..schemas.responses import QueryResponse, MetadataResponse
 from ..schemas.pagination import PaginationParams, paginate
-from ..services.query_processor import process_query
+from ..dependencies import get_data_analysis_service
+from ..services.data_analysis_service import DataAnalysisService
 
 router = APIRouter()
 
 @router.post("/analyze", response_model=QueryResponse)
 async def analyze_query(
     request: QueryRequest,
-    analyzer = Depends(get_analyzer_agent),
-    sql_agent = Depends(get_sql_agent),
-    viz_agent = Depends(get_viz_agent),
-    db = Depends(get_db)
+    data_analysis_service: DataAnalysisService = Depends(get_data_analysis_service)
 ):
     """
-    Обрабатывает запрос пользователя и возвращает результаты анализа
-    
-    Args:
-        request: Запрос пользователя
-        analyzer: Агент анализа
-        sql_agent: SQL-агент
-        viz_agent: Агент визуализации
-        db: Инструмент базы данных
-        
-    Returns:
-        Результаты обработки запроса
+    Обрабатывает запрос пользователя на анализ данных
     """
     try:
-        # Обеспечим наличие объекта пагинации, если он не передан
-        pagination_params = request.pagination if request.pagination else PaginationParams(page=1, page_size=100)
+        # Обрабатываем запрос через оптимизированный сервис
+        result = await data_analysis_service.process_query(request.query, use_cache=True)
         
-        # Обработка запроса пользователя
-        result = process_query(
-            query=request.query,
-            analyzer=analyzer,
-            sql_agent=sql_agent,
-            viz_agent=viz_agent,
-            db=db,
-            pagination=pagination_params
-        )
+        if not result["success"]:
+            raise HTTPException(status_code=500, detail=result.get("error", "Ошибка обработки запроса"))
         
-        # Формирование ответа
-        response = {
-            "success": True,
-            "data": result.get("data", []),
-            "visualization": result.get("visualization", {}),
-            "sql_query": result.get("sql_query", ""),
-            "explanation": result.get("explanation", ""),
-            "title": result.get("title", "Результаты анализа"),
-            "description": result.get("description", "")
-        }
+        # Применяем пагинацию, если она запрошена
+        if request.pagination:
+            paginated_data = paginate(result["data"], request.pagination)
+            result["data"] = paginated_data["items"]
+            result["pagination"] = {
+                "total": paginated_data["total"],
+                "page": paginated_data["page"],
+                "page_size": paginated_data["page_size"],
+                "total_pages": paginated_data["total_pages"]
+            }
         
-        # Добавление информации о пагинации, если она есть в результате
-        if "pagination" in result:
-            response["pagination"] = result["pagination"]
-        
-        return response
+        return result
     except Exception as e:
         import traceback
-        traceback.print_exc()  # Вывод полного стека ошибки для отладки
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+# Rest of the router remains the same as in your original file
 
 @router.get("/metadata", response_model=MetadataResponse)
 async def get_metadata(
