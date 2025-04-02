@@ -164,49 +164,46 @@ function VisualizationPanel({ queryResult, loading, error }) {
       );
     } 
     
-    if (updatedFigure) {
+    // Проверяем, что updatedFigure существует и содержит данные
+    if (updatedFigure && updatedFigure.data && updatedFigure.data.length > 0) {
       return (
         <>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
             <FormControlLabel
               control={
-              <Switch
-                checked={showDataLabels}
-                onChange={handleToggleDataLabels}
-                color="primary"
-              />
+                <Switch
+                  checked={showDataLabels}
+                  onChange={handleToggleDataLabels}
+                  color="primary"
+                />
               }
               label={t('dashboard', 'showDataLabels') || "Показывать значения"}
             />
           </Box>
-          {updatedFigure && updatedFigure.data ? (
-            <div id="plotContainer">
-              <Plot
-                data={updatedFigure.data}
-                layout={{
-                  ...updatedFigure.layout,
-                  autosize: true,
-                  height: 500
-                }}
-                config={plotlyConfig}
-                style={{ width: '100%', height: 500 }}
-                useResizeHandler={true}
-              />
-            </div>
-          ) : null}
+          <div id="plotContainer">
+            <Plot
+              data={updatedFigure.data}
+              layout={{
+                ...updatedFigure.layout,
+                autosize: true,
+                height: 500
+              }}
+              config={plotlyConfig}
+              style={{ width: '100%', height: 500 }}
+              useResizeHandler={true}
+            />
+          </div>
         </>
       );
     }
     
+    // Показываем сообщение, если нет данных для визуализации
     return (
-      <Paper elevation={3} sx={{ p: 2, height: '600px' }}>
-        {/* Проверка на наличие данных */}
-        {!queryResult && (
-          <Typography variant="body1" align="center" sx={{ mt: 4 }}>
-            Введите запрос для отображения данных
-          </Typography>
-        )}
-      </Paper>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '500px', flexDirection: 'column' }}>
+        <Typography variant="body1" align="center" sx={{ mt: 4 }}>
+          {queryResult ? "Нет данных для визуализации" : "Введите запрос для отображения данных"}
+        </Typography>
+      </Box>
     );
   }, [loading, error, updatedFigure, plotlyConfig, showDataLabels, queryResult]);
 

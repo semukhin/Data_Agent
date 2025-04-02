@@ -65,6 +65,16 @@ function App() {
     );
   }
 
+
+  useEffect(() => {
+    const handleError = (error) => {
+      console.error('React Error:', error);
+    };
+    
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <MainLayout 
