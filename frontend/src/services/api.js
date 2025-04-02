@@ -1,6 +1,5 @@
 // src/services/api.js
 import axios from 'axios';
-import { AuthService } from './auth';
 
 // Создание экземпляра axios с базовым URL
 const apiClient = axios.create({
@@ -10,37 +9,11 @@ const apiClient = axios.create({
   },
 });
 
-// Перехватчик для добавления токена авторизации
-// apiClient.interceptors.request.use(
-//   (config) => {
-//     const token = AuthService.getToken();
-//     if (token) {
-//       config.headers['Authorization'] = `Bearer ${token}`;
-//     }
-//     return config;
-//   },
-//   (error) => {
-//     return Promise.reject(error);
-//   }
-// );
 
-// Перехватчик для обработки ответов
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Обработка ошибки авторизации
-    if (error.response && error.response.status === 401) {
-      // Сохраняем текущий URL для возврата после авторизации
-      const currentUrl = window.location.pathname;
-      if (currentUrl !== '/login') {
-        sessionStorage.setItem('redirectAfterLogin', currentUrl);
-      }
-      
-      AuthService.logout();
-      window.location.href = '/login';
-    }
     
-    // Добавляем информативные сообщения об ошибках
     const errorMessage = error.response?.data?.detail 
       || error.message 
       || 'Произошла ошибка при выполнении запроса';

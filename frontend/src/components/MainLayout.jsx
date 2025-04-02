@@ -6,7 +6,6 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import IconButton from '@mui/material/IconButton';
-import LogoutIcon from '@mui/icons-material/Logout';
 import QueryInput from './QueryInput';
 import QueryHistory from './QueryHistory';
 import VisualizationPanel from './VisualizationPanel';
@@ -117,15 +116,6 @@ function MainLayout({ onLogout }) {
           <QueryHistory 
             onSelectQuery={handleSelectQueryFromHistory} 
           />
-          
-          <IconButton 
-            color="inherit" 
-            onClick={onLogout} 
-            sx={{ ml: 2 }}
-            title={t('auth', 'logout')}
-          >
-            <LogoutIcon />
-          </IconButton>
         </Toolbar>
       </AppBar>
       <Main>

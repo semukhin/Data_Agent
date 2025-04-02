@@ -40,12 +40,10 @@ async def add_cache_headers(request, call_next):
 # Настройка авторизации
 configure_auth_router(app)
 
-# Добавление маршрутов API с защитой авторизацией
 app.include_router(
     api.router,
     prefix=os.getenv("API_PREFIX", "/api"),
-    tags=["api"],
-    # dependencies=[Depends(get_current_active_user)]
+    tags=["api"]
 )
 
 # Публичный эндпоинт для проверки здоровья приложения
