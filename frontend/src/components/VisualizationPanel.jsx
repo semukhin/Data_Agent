@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Paper, Typography, Box, Tabs, Tab, CircularProgress, Alert, Switch, FormControlLabel } from '@mui/material';
 import Plot from 'react-plotly.js';
 // eslint-disable-next-line no-unused-vars
@@ -41,6 +41,49 @@ function VisualizationPanel({ queryResult, loading, error }) {
     setShowDataLabels(event.target.checked);
   };
   
+  // Оборачиваем функцию в useCallback
+  const createMultiSeriesData = useCallback((rawData) => {
+    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
+      return [];
+    }
+    
+    // Получаем все доступные колонки из данных
+    const columns = Object.keys(rawData[0]);
+    
+    // Ищем колонку с датами/категориями (обычно это первая колонка)
+    const xColumn = columns.find(col => 
+      col.toLowerCase().includes('month') || 
+      col.toLowerCase().includes('date') || 
+      col.toLowerCase().includes('time') ||
+      col.toLowerCase().includes('period')
+    ) || columns[0];
+    
+    // Получаем все числовые колонки (кроме колонки с датами)
+    const numericColumns = columns.filter(col => {
+      // Проверяем, что колонка содержит числовые значения
+      return col !== xColumn && typeof rawData[0][col] === 'number';
+    });
+    
+    // Создаем серии данных для каждой числовой колонки
+    return numericColumns.map(col => {
+      // Преобразуем название колонки в более читаемый формат
+      const seriesName = col
+        .replace(/_/g, ' ')
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase());
+      
+      return {
+        x: rawData.map(item => item[xColumn]),
+        y: rawData.map(item => item[col]),
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: seriesName,
+        hovertemplate: `${seriesName}: %{y}<extra></extra>`
+      };
+    });
+  }, []); // Пустой массив зависимостей, так как функция не зависит от состояния компонента
+  
+
   // Безопасное создание memoizedFigure с проверками
   const memoizedFigure = useMemo(() => {
     if (queryResult?.visualization) {
@@ -59,6 +102,68 @@ function VisualizationPanel({ queryResult, loading, error }) {
 
 
   const updatedFigure = useMemo(() => {
+    // Если есть сырые данные запроса, используем их напрямую
+    if (queryResult?.data && Array.isArray(queryResult.data) && queryResult.data.length > 0) {
+      const seriesData = createMultiSeriesData(queryResult.data);
+      
+      // Цветовая палитра для графиков
+      const colors = [
+        '#1976d2',   // основной синий
+        '#ff5722',   // оранжевый
+        '#4caf50',   // зеленый
+        '#9c27b0',   // фиолетовый
+        '#ff9800',   // оранжевый акцент
+        '#2196f3',   // голубой
+      ];
+      
+      const styledData = seriesData.map((series, index) => ({
+        ...series,
+        mode: showDataLabels ? 'lines+markers+text' : 'lines+markers',
+        marker: { 
+          color: colors[index % colors.length],
+          size: 8
+        },
+        line: {
+          width: 2,
+          color: colors[index % colors.length]
+        },
+        text: showDataLabels ? series.y : undefined,
+        textposition: 'top center',
+        textfont: {
+          family: 'Arial, sans-serif',
+          size: 12,
+          color: colors[index % colors.length]
+        }
+      }));
+      
+      return {
+        data: styledData,
+        layout: {
+          title: queryResult.title || 'Динамика показателей',
+          xaxis: {
+            title: 'Период',
+            tickangle: -45
+          },
+          yaxis: {
+            title: 'Значение'
+          },
+          legend: { 
+            x: 1.05,
+            y: 1,
+            xanchor: 'left',
+            yanchor: 'top'
+          },
+          margin: {
+            r: 150  // Увеличиваем правый отступ для легенды
+          },
+          hovermode: 'closest',
+          plot_bgcolor: 'white',
+          showlegend: true
+        }
+      };
+    }
+    
+    // Если нет сырых данных или если уже есть преобразованная фигура, используем старую логику
     if (!memoizedFigure || !memoizedFigure.data) {
       return null;
     }
@@ -72,37 +177,67 @@ function VisualizationPanel({ queryResult, loading, error }) {
       '#ff9800',   // оранжевый акцент
       '#2196f3',   // голубой
     ];
-
+  
     // Обновляем каждый трек, добавляя уникальные настройки
-    const updatedData = (memoizedFigure.data || []).map((trace, index) => ({
-      ...trace,
-      type: trace.type || 'scatter',
-      mode: showDataLabels ? 'lines+markers+text' : 'lines+markers', // Включаем текстовые метки
-      marker: { 
-        ...(trace.marker || {}),
-        color: colors[index % colors.length],
-        size: 8
-      },
-      line: {
-        ...(trace.line || {}),
-        width: 2
-      },
-      // Добавляем текстовые метки
-      text: showDataLabels ? trace.y : undefined,
-      textposition: 'top center',
-      textfont: {
-        family: 'Arial, sans-serif',
-        size: 12,
-        color: colors[index % colors.length]
-      },
-      // Переводим название колонки в более читаемый формат
-      name: trace.name 
-        ? trace.name
-        : trace.label || 
-          (typeof trace.y === 'object' && trace.y.name) || 
-          `Показатель ${index + 1}`
-    }));
-
+    const updatedData = Array.isArray(memoizedFigure.data) 
+      ? memoizedFigure.data.map((trace, index) => ({
+          ...trace,
+          type: trace.type || 'scatter',
+          mode: showDataLabels ? 'lines+markers+text' : 'lines+markers', // Включаем текстовые метки
+          marker: { 
+            ...(trace.marker || {}),
+            color: colors[index % colors.length],
+            size: 8
+          },
+          line: {
+            ...(trace.line || {}),
+            width: 2,
+            color: colors[index % colors.length]
+          },
+          // Добавляем текстовые метки
+          text: showDataLabels ? trace.y : undefined,
+          textposition: 'top center',
+          textfont: {
+            family: 'Arial, sans-serif',
+            size: 12,
+            color: colors[index % colors.length]
+          },
+          // Переводим название колонки в более читаемый формат
+          name: trace.name 
+            ? trace.name
+            : trace.label || 
+              (typeof trace.y === 'object' && trace.y.name) || 
+              `Показатель ${index + 1}`
+        }))
+      : [memoizedFigure.data].map((trace, index) => ({
+          // То же самое, что и выше, для случая, когда memoizedFigure.data не является массивом
+          ...trace,
+          type: trace.type || 'scatter',
+          mode: showDataLabels ? 'lines+markers+text' : 'lines+markers',
+          marker: { 
+            ...(trace.marker || {}),
+            color: colors[index % colors.length],
+            size: 8
+          },
+          line: {
+            ...(trace.line || {}),
+            width: 2,
+            color: colors[index % colors.length]
+          },
+          text: showDataLabels ? trace.y : undefined,
+          textposition: 'top center',
+          textfont: {
+            family: 'Arial, sans-serif',
+            size: 12,
+            color: colors[index % colors.length]
+          },
+          name: trace.name 
+            ? trace.name
+            : trace.label || 
+              (typeof trace.y === 'object' && trace.y.name) || 
+              `Показатель ${index + 1}`
+        }));
+  
     // Обновляем макет для лучшей читаемости
     const updatedLayout = {
       ...(memoizedFigure.layout || {}),
@@ -127,13 +262,13 @@ function VisualizationPanel({ queryResult, loading, error }) {
         r: 150  // Увеличиваем правый отступ для легенды
       }
     };
-
+  
     return {
       ...memoizedFigure,
       data: updatedData,
       layout: updatedLayout
     };
-  }, [memoizedFigure, showDataLabels]);
+  }, [memoizedFigure, showDataLabels, queryResult]);
 
   // Plotly configuration
   const plotlyConfig = useMemo(() => ({
@@ -190,17 +325,17 @@ function VisualizationPanel({ queryResult, loading, error }) {
             />
           </Box>
           <div id="plotContainer">
-            <Plot
-              data={updatedFigure.data}
-              layout={{
-                ...updatedFigure.layout,
-                autosize: true,
-                height: 500
-              }}
-              config={plotlyConfig}
-              style={{ width: '100%', height: 500 }}
-              useResizeHandler={true}
-            />
+          <Plot
+            data={updatedFigure?.data || []}
+            layout={{
+              ...(updatedFigure?.layout || {}),
+              autosize: true,
+              height: 500
+            }}
+            config={plotlyConfig}
+            style={{ width: '100%', height: 500 }}
+            useResizeHandler={true}
+          />
           </div>
         </>
       );
@@ -313,6 +448,14 @@ function VisualizationPanel({ queryResult, loading, error }) {
     );
   }, [queryResult?.sql_query, queryResult?.explanation, loading]);
 
+  useEffect(() => {
+    if (queryResult?.data && queryResult.data.length > 0) {
+      console.log('Raw data:', queryResult.data);
+      console.log('Generated series:', createMultiSeriesData(queryResult.data));
+      console.log('Styled figure:', updatedFigure);
+    }
+  }, [queryResult, updatedFigure, createMultiSeriesData]);
+
   return (
     <Paper elevation={3} sx={{ p: 2, height: '600px' }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -337,5 +480,6 @@ function VisualizationPanel({ queryResult, loading, error }) {
     </Paper>
   );
 }
+
 
 export default React.memo(VisualizationPanel);
