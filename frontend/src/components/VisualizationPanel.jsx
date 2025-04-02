@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Paper, Typography, Box, Tabs, Tab, CircularProgress, Alert, Switch, FormControlLabel } from '@mui/material';
 import Plot from 'react-plotly.js';
+// eslint-disable-next-line no-unused-vars
 import * as Plotly from 'plotly.js';
 import { t } from '../services/language';
 
@@ -29,6 +30,16 @@ function a11yProps(index) {
 function VisualizationPanel({ queryResult, loading, error }) {
   const [tabValue, setTabValue] = useState(0);
   const [showDataLabels, setShowDataLabels] = useState(false);
+  
+  // Обработчик изменения вкладки
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  // Обработчик переключения отображения меток данных
+  const handleToggleDataLabels = (event) => {
+    setShowDataLabels(event.target.checked);
+  };
   
   // Безопасное создание memoizedFigure с проверками
   const memoizedFigure = useMemo(() => {
@@ -64,13 +75,15 @@ function VisualizationPanel({ queryResult, loading, error }) {
     // Обновляем каждый трек, добавляя уникальные настройки
     const updatedData = (memoizedFigure.data || []).map((trace, index) => ({
       ...trace,
-      type: 'scatter',
-      mode: 'lines+markers',
+      type: trace.type || 'scatter',
+      mode: trace.mode || 'lines+markers',
       marker: { 
+        ...(trace.marker || {}),
         color: colors[index % colors.length],
         size: 8
       },
       line: {
+        ...(trace.line || {}),
         width: 2
       },
       // Переводим название колонки в более читаемый формат
@@ -112,7 +125,7 @@ function VisualizationPanel({ queryResult, loading, error }) {
       layout: updatedLayout
     };
   }, [memoizedFigure]);
-  
+
   // Plotly configuration
   const plotlyConfig = useMemo(() => ({
     displaylogo: false,
@@ -157,26 +170,30 @@ function VisualizationPanel({ queryResult, loading, error }) {
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
             <FormControlLabel
               control={
-                <Switch
-                  checked={showDataLabels}
-                  onChange={handleToggleDataLabels}
-                  color="primary"
-                />
+              <Switch
+                checked={showDataLabels}
+                onChange={handleToggleDataLabels}
+                color="primary"
+              />
               }
               label={t('dashboard', 'showDataLabels') || "Показывать значения"}
             />
           </Box>
-          <Plot
-            data={updatedFigure.data}
-            layout={{
-              ...updatedFigure.layout,
-              autosize: true,
-              height: 500
-            }}
-            config={plotlyConfig}
-            style={{ width: '100%', height: 500 }}
-            useResizeHandler={true}
-          />
+          {updatedFigure && updatedFigure.data ? (
+            <div id="plotContainer">
+              <Plot
+                data={updatedFigure.data}
+                layout={{
+                  ...updatedFigure.layout,
+                  autosize: true,
+                  height: 500
+                }}
+                config={plotlyConfig}
+                style={{ width: '100%', height: 500 }}
+                useResizeHandler={true}
+              />
+            </div>
+          ) : null}
         </>
       );
     }
@@ -191,7 +208,7 @@ function VisualizationPanel({ queryResult, loading, error }) {
         )}
       </Paper>
     );
-  }, [loading, error, updatedFigure, plotlyConfig, showDataLabels]);
+  }, [loading, error, updatedFigure, plotlyConfig, showDataLabels, queryResult]);
 
   // Data tab rendering
   const renderDataTab = useMemo(() => {
